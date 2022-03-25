@@ -8,27 +8,14 @@ on:
   pull_request:
     branches:
     - develop
-    types: [closed]
-  
+    types: [closed ]  
 
     
-concurrency:
-  group: Development
-    
-
   
 jobs:
   build:
   
   runs-on: ubuntu-latest
-
-
-  
-  
-  
-
-  
-
 
     steps:
         - name: Repository checkout
