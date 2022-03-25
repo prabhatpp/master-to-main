@@ -1,0 +1,72 @@
+##CD for Deify
+name: CD Deify-web dev
+
+on:
+  push:
+    branches:
+    - develop
+  pull_request:
+    branches:
+    - develop
+    types: [closed]
+  
+
+    
+concurrency:
+  group: Development
+    
+
+  
+jobs:
+  build:
+  
+  runs-on: ubuntu-latest
+  if: github.event.pull_request.merged == true
+
+  
+  
+  
+
+  
+
+
+    steps:
+        - name: Repository checkout
+          uses: actions/checkout@v2
+    
+        - name: Get Github action IP
+          id: ip
+          uses: haythem/public-ip@v1.2
+        - name: Setting environment variables..
+          run: |
+           echo "AWS_DEFAULT_REGION=ap-south-1" >> $GITHUB_ENV
+           echo "AWS_SG_NAME=github_action_IP" >> $GITHUB_ENV
+           
+        - name: Add Github Actions IP to Security group
+          run: |
+           aws ec2 authorize-security-group-ingress --group-id sg-07906d683862ae26a --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+          env:
+           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}    
+
+        - name: Execute Remote SSH  &  Run Pipeline
+          uses: garygrossgarten/github-action-ssh@release
+          with:
+            host: ${{secrets.HOST}}
+            username: ${{secrets.USERNAME}}
+            privatekey: ${{secrets.SSH_SECRET}}
+            command: |
+              cd ~/deify-web
+              git checkout develop
+              git pull origin develop
+              sudo docker-compose up -d --force-recreate --build
+              
+        - name: Remove Github Actions IP from security group
+          run: |
+           aws ec2 revoke-security-group-ingress --group-id sg-07906d683862ae26a --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+          env:
+           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+           AWS_DEFAULT_REGION: ${{ env.AWS_DEFAULT_REGION }}
+          if: always()
